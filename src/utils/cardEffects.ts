@@ -28,14 +28,15 @@ export const applyCardEffect = (
       return updates;
       
     case 'draw2':
-      // Handled separately in drawCards logic
+      // 2 - Draw 2. Forces the next player to draw 2 cards from the deck and their turn is over. Can only be cancelled by playing another 2 forcing the next player to draw the sum of all 2s played.
+      updates.pendingDraws = (gameState.pendingDraws || 0) + 2;
       break;
   }
 
   updates.currentPlayerIndex = getNextPlayerIndex(
     gameState.currentPlayerIndex,
     gameState.players.length,
-    updates.isReversed ?? gameState.isReversed || false,
+    updates.isReversed ?? (gameState.isReversed || false),
     false
   );
 

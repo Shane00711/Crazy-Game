@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, GameState } from '../types/game';
+import { GameState } from '../types/game';
+import { Card, getSpecialCardEffect, SPECIAL_CARDS } from '../types/cards';
 import { getAIMove } from '../utils/aiPlayer';
 import { PlayerCard } from './PlayerCard';
 import { PlayerHand } from './PlayerHand';
 import { Card as CardComponent } from './Card';
 import { recycleCards } from '../utils/deckManager';
+import { applyCardEffect } from '../utils/cardEffects';
 
 interface GameBoardProps {
   initialGameState: GameState;
@@ -13,6 +15,47 @@ interface GameBoardProps {
 export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
   const [gameState, setGameState] = useState<GameState>(initialGameState);
 
+  useEffect(() => {
+    if (gameState.isGameOver) return;
+
+    const timer = setInterval(() => {
+      setGameState(prev => {
+        if (prev.timeLeft <= 0) {
+          const updatedPlayers = [...prev.players];
+          updatedPlayers[prev.currentPlayerIndex].penalties += 1;
+          updatedPlayers[prev.currentPlayerIndex].score -= 5;
+
+          return {
+            ...prev,
+            players: updatedPlayers,
+            currentPlayerIndex: (prev.currentPlayerIndex + 1) % prev.players.length,
+            timeLeft: 30,
+          };
+        }
+        return { ...prev, timeLeft: prev.timeLeft - 1 };
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameState.isGameOver]);
+
+  useEffect(() => {
+    if (gameState.players[gameState.currentPlayerIndex].isAI && !gameState.isGameOver) {
+      const aiTimeout = setTimeout(() => {
+        const aiHand = gameState.players[gameState.currentPlayerIndex].hand;
+        const topCard = gameState.pile[gameState.pile.length - 1];
+        const cardToPlay = getAIMove(aiHand, topCard);
+        
+        if (cardToPlay) {
+          handleCardPlay(cardToPlay);
+        } else {
+          drawCard();
+        }
+      }, 2000);
+
+      return () => clearTimeout(aiTimeout);
+    }
+  }, [gameState.currentPlayerIndex]);
   // ... existing timer and AI effects ...
 
   const handleCardPlay = (card: Card) => {
@@ -29,8 +72,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
       
       updatedPlayers[playerIndex].score += card.score;
 
+      // Apply card effect if it's a special card
+      const cardEffect = getSpecialCardEffect(card.value);
+      let effectUpdates = {};
+      if (cardEffect) {
+        effectUpdates = applyCardEffect(gameState, cardEffect);
+      }
+
       // Check if pile is getting too large and needs recycling
-      const newPile = [...gameState.pile, card];
+      let newPile = [...gameState.pile, card];
       let newDeck = gameState.deck;
 
       if (newPile.length > 20) { // Recycle when pile gets too large
@@ -46,6 +96,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
         deck: newDeck,
         pile: newPile,
         timeLeft: 30,
+        ...effectUpdates,
       }));
     }
   };
@@ -86,5 +137,59 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
     }
   };
 
-  // ... rest of the component remains the same ...
+  return (
+    <div className="p-8">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-3xl font-bold text-center mb-8">Card Game</h1>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {gameState.players.map((player, index) => (
+            <PlayerCard
+              key={player.id}
+              player={player}
+              isActive={index === gameState.currentPlayerIndex}
+              timeLeft={gameState.timeLeft}
+            />
+          ))}
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+          <div className="flex justify-center gap-8 items-center">
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-2">Deck</p>
+              <div className="w-20 h-32 bg-blue-500 rounded-lg shadow-md"></div>
+              <p className="mt-2 text-sm">{gameState.deck.length} cards left</p>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-2">Current Card</p>
+              {gameState.pile.length > 0 && (
+                <CardComponent card={gameState.pile[gameState.pile.length - 1]} />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {!gameState.players[gameState.currentPlayerIndex].isAI && (
+          <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 className="text-xl font-semibold mb-4">
+              {gameState.players[gameState.currentPlayerIndex].name}'s Hand
+            </h2>
+            <PlayerHand
+              cards={gameState.players[gameState.currentPlayerIndex].hand}
+              isActive={true}
+              onCardPlay={handleCardPlay}
+            />
+            <button
+              onClick={drawCard}
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              disabled={gameState.isGameOver}
+            >
+              Draw Card
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };

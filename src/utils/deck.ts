@@ -1,4 +1,4 @@
-import { Card } from '../types/game';
+import { Card } from '../types/cards';
 
 const SUITS = ['hearts', 'diamonds', 'clubs', 'spades'] as const;
 const VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];

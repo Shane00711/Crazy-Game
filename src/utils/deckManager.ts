@@ -1,4 +1,4 @@
-import { Card } from '../types/game';
+import { Card } from '../types/cards';
 import { shuffleDeck } from './deck';
 
 export const recycleCards = (deck: Card[], pile: Card[]): { newDeck: Card[], newPile: Card[] } => {

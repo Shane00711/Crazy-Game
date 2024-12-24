@@ -1,4 +1,4 @@
-import { Card, Suit } from './cards';
+import { Suit, Card } from './cards';
 
 export interface Player {
   id: string;

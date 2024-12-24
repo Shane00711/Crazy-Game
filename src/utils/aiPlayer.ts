@@ -1,4 +1,4 @@
-import { Card } from '../types/game';
+import { Card } from '../types/cards';
 
 export const getAIMove = (hand: Card[], topCard: Card | null): Card | null => {
   if (!topCard) return hand[0];

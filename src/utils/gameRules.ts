@@ -1,5 +1,4 @@
-import { Card, GameState } from '../types/game';
-import { SPECIAL_CARDS, Suit } from '../types/cards';
+import { SPECIAL_CARDS, Suit, Card } from '../types/cards';
 
 export const isValidFirstCard = (card: Card): boolean => {
   return !['8', '2', '7', 'J'].includes(card.value);
