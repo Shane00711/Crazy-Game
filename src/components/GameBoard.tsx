@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { GameState } from '../types/game';
-import { Card, getSpecialCardEffect, SPECIAL_CARDS } from '../types/cards';
-import { getAIMove } from '../utils/aiPlayer';
+import { Card, getSpecialCardEffect, SPECIAL_CARDS, Suit } from '../types/cards';
+import { getAIMove, getAISuitSelection } from '../utils/aiPlayer';
 import { PlayerCard } from './PlayerCard';
 import { PlayerHand } from './PlayerHand';
 import { Card as CardComponent } from './Card';
 import { recycleCards } from '../utils/deckManager';
 import { applyCardEffect } from '../utils/cardEffects';
+import SuitSelectionModal from '../models/suitSelectionModel';
+import { useModal } from '../ModelContext';
 
 interface GameBoardProps {
   initialGameState: GameState;
@@ -14,7 +16,8 @@ interface GameBoardProps {
 
 export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
   const [gameState, setGameState] = useState<GameState>(initialGameState);
-
+  const { openModal, closeModal, isOpen } = useModal();
+  const [pendingCardEffect, setPendingCardEffect] = useState<Partial<GameState> | null>(null);
   useEffect(() => {
     if (gameState.isGameOver) return;
 
@@ -60,9 +63,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
 
   const handleCardPlay = (card: Card) => {
     const topCard = gameState.pile[gameState.pile.length - 1];
+    const requestedSuit = gameState.requestedSuit;
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    
-    if (card.suit === topCard.suit || card.value === topCard.value) {
+    if ((requestedSuit && requestedSuit == card.suit) || (card.suit === topCard.suit || card.value === topCard.value)) {
       const updatedPlayers = [...gameState.players];
       const playerIndex = gameState.currentPlayerIndex;
       
@@ -76,6 +79,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
       const cardEffect = getSpecialCardEffect(card.value);
       let effectUpdates = {};
       if (cardEffect) {
+        if (cardEffect.type === 'wild') {
+          if (currentPlayer.isAI) {
+            const selectedSuit = getAISuitSelection(currentPlayer.hand);
+            handleSuitSelection(selectedSuit);
+            return;
+          } else {
+            openModal();
+            setPendingCardEffect(applyCardEffect(gameState, cardEffect));
+            return; // Wait for modal to close
+          }
+        }
         effectUpdates = applyCardEffect(gameState, cardEffect);
       }
 
@@ -96,6 +110,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
         deck: newDeck,
         pile: newPile,
         timeLeft: 30,
+        requestedSuit: undefined,
         ...effectUpdates,
       }));
     }
@@ -137,6 +152,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
     }
   };
 
+  const handleSuitSelection = (suit: Suit) => {
+    setGameState(prev => ({
+      ...prev,
+      ...pendingCardEffect,
+      requestedSuit: suit,
+    }));
+    setPendingCardEffect(null);
+    closeModal();
+  };
+
   return (
     <div className="p-8">
       <div className="max-w-6xl mx-auto">
@@ -167,6 +192,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
                 <CardComponent card={gameState.pile[gameState.pile.length - 1]} />
               )}
             </div>
+
+            {gameState.requestedSuit && (gameState.pile[gameState.pile.length - 1].suit != gameState.requestedSuit)&& (
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-2">Requested Suit</p>
+                <CardComponent card={{ suit: gameState.requestedSuit, value: 'A', score: 0 }} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -190,6 +222,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
           </div>
         )}
       </div>
+      <SuitSelectionModal onSelectSuit={handleSuitSelection} />
     </div>
   );
 };
