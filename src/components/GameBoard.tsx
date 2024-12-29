@@ -47,7 +47,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
       const aiTimeout = setTimeout(() => {
         const aiHand = gameState.players[gameState.currentPlayerIndex].hand;
         const topCard = gameState.pile[gameState.pile.length - 1];
-        const cardToPlay = getAIMove(aiHand, topCard);
+        const requestedSuit = gameState.requestedSuit;
+        const cardToPlay = getAIMove(aiHand, topCard, requestedSuit);
         
         if (cardToPlay) {
           handleCardPlay(cardToPlay);
@@ -64,9 +65,18 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
   const handleCardPlay = (card: Card) => {
     const topCard = gameState.pile[gameState.pile.length - 1];
     const requestedSuit = gameState.requestedSuit;
+    const cardEffect = getSpecialCardEffect(card.value);
+    if ((requestedSuit && card.suit === requestedSuit) || (cardEffect && cardEffect.type === 'wild')) {
+      executeCardPlay(card);
+    }
+    if ((card.suit === topCard.suit || card.value === topCard.value) || (cardEffect && cardEffect.type === 'wild')) {
+      executeCardPlay(card);
+    }
+  };
+
+  const executeCardPlay = (card: Card) => {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    if ((requestedSuit && requestedSuit == card.suit) || (card.suit === topCard.suit || card.value === topCard.value)) {
-      const updatedPlayers = [...gameState.players];
+const updatedPlayers = [...gameState.players];
       const playerIndex = gameState.currentPlayerIndex;
       
       updatedPlayers[playerIndex].hand = currentPlayer.hand.filter(
@@ -113,7 +123,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({ initialGameState }) => {
         requestedSuit: undefined,
         ...effectUpdates,
       }));
-    }
   };
 
   const drawCard = () => {

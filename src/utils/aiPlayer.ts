@@ -1,11 +1,15 @@
-import { Card, Suit } from '../types/cards';
+import { Card, getSpecialCardEffect, Suit } from '../types/cards';
 
-export const getAIMove = (hand: Card[], topCard: Card | null): Card | null => {
+export const getAIMove = (hand: Card[], topCard: Card | null, requestedSuit?: string | undefined): Card | null => {
   if (!topCard) return hand[0];
-  
+  if (requestedSuit) {
+    return hand.find(card => card.suit === requestedSuit) || hand.find(card => getSpecialCardEffect(card.value)?.type === 'wild') || null;
+  }
+
   return hand.find(card => 
     card.suit === topCard.suit || card.value === topCard.value
-  ) || null;
+  ) || hand.find(card => getSpecialCardEffect(card.value)?.type === 'wild') || null;
+
 };
 
 export const getAISuitSelection = (hand: Card[]): Suit => {
